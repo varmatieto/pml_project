@@ -48,8 +48,8 @@ table(colna20)
 sum(!colna0)
 
 # select significative variables only 
-
-colnames(pml_submit)[colna0]
+colna0<-colSums(is.na(pml_submit)) == 0
+# colnames(pml_submit)[colna0]
 features <- colnames(pml_submit[colna0])[8:59]
 
 data <- pml_train[,c(features,"classe")]
@@ -72,6 +72,20 @@ dim(training)
 dim(testing)
 
 ############################################à
+library (randomForest)
+set.seed(4543)
+
+data.rf <- randomForest(classe ~ ., data = training,
+                          keep.forest=FALSE, importance=TRUE)
+
+myimportance<-importance(data.rf, type=1)
+summary(myimportance)
+
+colnames(data)[sort (myimportance)]
+plot (sort (myimportance),col="red",)
+
+
+
 
 # optiom zero : on all data
 
