@@ -1,0 +1,98 @@
+---
+title: "Practical Machine Learning - Course Project"
+author: "CI"
+date: "Wednesday, October 22, 2014"
+output: html_document
+---
+
+### Background
+Quantified Self devices are becoming more and more common, and are able to collect a large amount of data about people and their personal health activities. The focus of this project is to utilize some sample data on the quality of certain exercises to predict the manner in which they did the exercise.
+
+### Analysis
+This analysis will build a machine learning model from the sample data that is attempting to most accurately predict the manner in which the exercise was performed. This is a classification problem into discrete categories, which in the training data are located in the 'classe' varaible.  More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset). 
+Six young health participants were asked to perform one set of 10 repetitions of the Unilateral Dumbbell Biceps Curl in five different fashions: exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E). Class A corresponds to the specified execution of the exercise, while the other 4 classes correspond to common mistakes.
+The main objectives of this project are as follows:   
+    * Predict the manner in which they did the exercise depicted by the classe variable.   
+    * Build a prediction model using different features and cross-validation technique.   
+    * Calculate the out of sample error.   
+    * Use the prediction model to predict 20 different test cases provided.    
+
+### Load and Preprocess
+The analysis starts by downloading the data into local files. There are 2 data sets, the training dataset (to predict the manner in which they did the exercise) and the testing dataset (to perform the predictions from the final model on). 
+
+```{r download,echo=TRUE,results='hide'}
+
+library(caret, quietly=TRUE)
+
+url_train <- 'https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv'
+url_test <- 'https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv'
+
+
+if (!file.exists('~/GitHub/pml_project/data/data_train.csv')) {
+  download.file(url = url_train, destfile = 'data_train.csv')
+}
+
+if (!file.exists('~/GitHub/pml_project/data/data_test.csv')) {
+  download.file(url = url_test, destfile = 'data_test.csv')  
+}
+
+pml_train <- read.csv(file = '~/GitHub/pml_project/data/data_train.csv',
+                      na.strings = c('NA','#DIV/0!',''))
+pml_submit <- read.csv(file = '~/GitHub/pml_project/data/data_test.csv',
+                     na.strings = c('NA','#DIV/0!',''))
+
+# dim(pml_submit)
+p0<-dim(pml_train)[2] # 19622   160
+
+# colnames are identical except "problem_id" and "classe"
+ct<-colnames(pml_submit)
+cd<-colnames(pml_train)
+my1<-ct[!(ct%in%cd)]
+my2<-cd[!(cd%in%ct)]
+
+# there are several variables full of NA
+colna<-colSums(is.na(pml_submit))
+colnat<-colSums(is.na(pml_train))
+# hist (colna); hist (colnat)
+colna0<-colSums(is.na(pml_submit)) == 0
+colna20<-colSums(is.na(pml_submit)) == 20
+
+
+p1<-sum (!colna0)
+p2<-sum (colna0)
+p3<-colnames(pml_submit)[colna0][1:7]
+```
+
+The two dataset have identical colnames, except "classe" (in training ) and "problem_id" (in testing ).
+The data contains **`r p0`** variables as a whole. Checking, I see that many variables are full of NA. Actually,  there are **`r p1`** variables full of NA and only **`r p2`** variables that can be taking as predictors. I subset the downloaded dataset (both train and testing) with only relevants predictors.    
+Moreover I remove the first 7 variables, (*`r p3`*) that contains data not pertinent to the prediction model.    
+Before fitting a model, it is useful to have an idea of the ratio that should be expected of the classification variable outcome **Class** with a plot distribution. This will govern how we seek to optimize models for Specificity, Sensitivity, and Positive/Negative Predictive Value. 
+
+```{r plot1, echo=TRUE, fig.width=9}
+
+
+features <- colnames(pml_submit[colna0])[8:59]
+
+data <- pml_train[,c(features,"classe")]
+submit <- pml_submit[,c(features,"problem_id")]
+
+plot(data$classe,col=rainbow(5),main = "`classe` frequency plot")
+
+```
+
+
+### Data partitioning
+
+First we partition the "cleanTraining"" dataset into training and testing data sets for building our model and be ready for cross validation.
+
+
+```{r seed, echo=TRUE, results='hide'}
+
+set.seed(2204)
+inTrain = createDataPartition(data$classe, p = 0.75, list = F)
+training = data[inTrain,]
+testing = data[-inTrain,]
+
+
+```
+

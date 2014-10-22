@@ -45,6 +45,7 @@ colna0<-colSums(is.na(pml_submit)) == 0
 colna20<-colSums(is.na(pml_submit)) == 20
 table(colna0)
 table(colna20)
+sum(!colna0)
 
 # select significative variables only 
 
