@@ -9,8 +9,10 @@ output: html_document
 Quantified Self devices are becoming more and more common, and are able to collect a large amount of data about people and their personal health activities. The focus of this project is to utilize some sample data on the quality of certain exercises to predict the manner in which they did the exercise.
 
 ### Analysis
-This analysis will build a machine learning model from the sample data that is attempting to most accurately predict the manner in which the exercise was performed. This is a classification problem into discrete categories, which in the training data are located in the 'classe' varaible.  More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset). 
+This analysis will build a machine learning model from the sample data that is attempting to most accurately predict the manner in which the exercise was performed. This is a classification problem into discrete categories, which in the training data are located in the 'classe' varaible.  More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).     
 Six young health participants were asked to perform one set of 10 repetitions of the Unilateral Dumbbell Biceps Curl in five different fashions: exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E). Class A corresponds to the specified execution of the exercise, while the other 4 classes correspond to common mistakes.
+
+
 The main objectives of this project are as follows:   
     * Predict the manner in which they did the exercise depicted by the classe variable.   
     * Build a prediction model using different features and cross-validation technique.   
@@ -63,10 +65,11 @@ p2<-sum (colna0)
 p3<-colnames(pml_submit)[colna0][1:7]
 ```
 
-The two dataset have identical colnames, except "classe" (in training ) and "problem_id" (in testing ).
+
+The two dataset have identical colnames, except "classe" (in training ) and "problem_id" (in testing ).     
 The data contains **`r p0`** variables as a whole. Checking, I see that many variables are full of NA. Actually,  there are **`r p1`** variables full of NA and only **`r p2`** variables that can be taking as predictors. I subset the downloaded dataset (both train and testing) with only relevants predictors.    
-Moreover I remove the first 7 variables, (*`r p3`*) that contains data not pertinent to the prediction model.    
-Before fitting a model, it is useful to have an idea of the ratio that should be expected of the classification variable outcome **Class** with a plot distribution. This will govern how we seek to optimize models for Specificity, Sensitivity, and Positive/Negative Predictive Value. 
+Moreover I remove the first 7 variables, (*`r p3`*) that contains *metadata* not pertinent to the prediction model.    
+Before fitting a model, it is useful to have an idea of the ratio that should be expected of the classification variable outcome **Class** with a plot distribution. This will govern how we seek to optimize models for Specificity, Sensitivity, and Positive/Negative Predictive Value. The plot shows that the distribution of the outcome in five different classes is balanced. This helps both model for accuracy and overall out of sample error.
 
 ```{r plot1, echo=TRUE, fig.width=9}
 
@@ -83,7 +86,7 @@ plot(data$classe,col=rainbow(5),main = "`classe` frequency plot")
 
 ### Data partitioning
 
-First we partition the "cleanTraining"" dataset into training and testing data sets for building our model and be ready for cross validation.
+First I partition the "Training"" dataset (already cleaned) into training and validation datasets for building the model and be ready for cross validation.
 
 
 ```{r seed, echo=TRUE, results='hide'}
@@ -91,8 +94,72 @@ First we partition the "cleanTraining"" dataset into training and testing data s
 set.seed(2204)
 inTrain = createDataPartition(data$classe, p = 0.75, list = F)
 training = data[inTrain,]
-testing = data[-inTrain,]
+validating = data[-inTrain,]
 
 
 ```
 
+### Model building
+
+From preliminary analysis, a Random Forest model has been chosen. The random forest method reduces overfitting and is good for nonlinear features. 
+An attempt has been made to understand the importance of the different predictors in order to understand if I have to reduce the number of variables.
+
+```{r importance, echo=TRUE,  fig.width=9, cache=TRUE}
+
+library (randomForest)
+set.seed(4543)
+
+data.rf <- randomForest(classe ~ ., data = training,
+                          keep.forest=FALSE, importance=TRUE)
+
+myimportance<-importance(data.rf, type=1)
+p4<-summary(myimportance)
+
+# colnames(data)[sort (myimportance)]
+plot (sort (myimportance),col="red", pch=21, 
+      main="Predictors importance", ylab=" ")
+
+```
+
+The plot shows that the importance of the different predictors ranges  *`r p4`* .     Standing this distribution, I decide to run the model with **all** the 52 predictors.
+
+```{r model, echo=TRUE,  cache=TRUE}
+
+model_all <- train(classe ~ ., data = training, 
+                   method = "rf", 
+                   trControl = trainControl(method = "cv", 
+                                            number = 4, 
+                                            allowParallel = TRUE))
+model_all$finalModel
+
+```
+
+The model seems to fit very well. The out-of-bag (oob) error estimate is .59 very low indeed. 
+
+### Model cross validation and out of sample error 
+
+Here follows the **in sample accuracy** (which is the prediction accuracy of the model on the training dataset) and **out sample accuracy** (which is the prediction accuracy of the model on the validation dataset).
+
+```{r validation, echo=TRUE,  cache=TRUE}
+
+confusionMatrix(training$classe, model_all$finalModel$predicted )
+
+#  out of sample error to be estimated
+confusionMatrix(validating$classe,predict(model_all,validating))
+
+```
+ Both accuracies are over 99%. The model well fit the prediction.
+
+### Prediction Assignment
+
+Here, I apply the machine learning algorithm I built above, to each of the 20 test cases in the testing dataset provided.   
+Considering that the test sample size is 20 and accuracy rate of the model is well above 99%, I expect that none of the test samples will be mis-classified.
+
+
+```{r answer, echo=TRUE}
+
+answers <- predict(model, submit)
+answers <- as.character(answers)
+answers
+
+```

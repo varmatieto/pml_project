@@ -27,7 +27,7 @@ dim(pml_submit)
 dim(pml_train) # 19622   160
 
 
-# colnames are identical except "problem_id" and "classe"
+## colnames are identical except "problem_id" and "classe"
 ct<-colnames(pml_submit)
 cd<-colnames(pml_train)
 ct[!(ct%in%cd)]
@@ -35,7 +35,7 @@ cd[!(cd%in%ct)]
 
 
 
-# there are several variables full of NA
+## there are several variables full of NA
 
 colna<-colSums(is.na(pml_submit))
 hist(colna)
@@ -63,13 +63,13 @@ dim(submit)
 plot(data$classe,col=rainbow(5),main = "`classe` frequency plot")
 
 ################################################################
-set.seed(2204)
+set.seed(4543)
 inTrain = createDataPartition(data$classe, p = 0.75, list = F)
 training = data[inTrain,]
-testing = data[-inTrain,]
+validating = data[-inTrain,]
 
 dim(training)
-dim(testing)
+dim(validating)
 
 ############################################à
 library (randomForest)
@@ -94,14 +94,19 @@ model_all <- train(classe ~ ., data = training,
                    method = "rf", 
                    trControl = trainControl(method = "cv", 
                                             number = 4, 
-                                            allowParallel = TRUE, 
-                                            verboseIter = TRUE))
+                                            allowParallel = TRUE))
 model_all$finalModel
 
+plot(varImp(model_all,scale=FALSE))
+
+str(model_all)
+model_all$results$Accuracy
+model_all$finalModel$predicted
+
+confusionMatrix(training$classe, model_all$finalModel$predicted )
 
 #  out of sample error to be estimated
-confusionMatrix(testing$classe,predict(model_all,testing))
-
+confusionMatrix(validating$classe,predict(model_all,validating))
 
 
 
@@ -143,11 +148,11 @@ modelRF = train(classe ~ ., trainingh, method = "rf", ntree = 200, trControl = c
 resultsKNN = data.frame(modelKNN$results)
 resultsRF = data.frame(modelRF$results)
 
-fitKNN = predict(modelKNN, testing)
-fitRF = predict(modelRF, testing)
+fitKNN = predict(modelKNN, validating)
+fitRF = predict(modelRF, validating)
 
-confusionMatrix(testing$classe,fitKNN)
-confusionMatrix(testing$classe,fitRF)
+confusionMatrix(validating$classe,fitKNN)
+confusionMatrix(validating$classe,fitRF)
 
 
 submit_h<-predict(modelRF,submit)
@@ -166,8 +171,8 @@ modelFit<-train(training$classe~.,
                 method="rf",data=trainPC,trControl=trainControl(method="cv"))
 modelFit$finalModel
 
-validatePC<-predict(preProc,testing[,-53])
-confusionMatrix(testing$classe,predict(modelFit,validatePC))
+validatePC<-predict(preProc,validating[,-53])
+confusionMatrix(validating$classe,predict(modelFit,validatePC))
 
 pre_submitPC<-predict(preProc,submit[,-53])
 submit_PC<-predict(modelFit,pre_submitPC)
