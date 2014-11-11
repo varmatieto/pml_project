@@ -8,6 +8,7 @@ output: html_document
 ### Background
 Quantified Self devices are becoming more and more common, and are able to collect a large amount of data about people and their personal health activities. The focus of this project is to utilize some sample data on the quality of certain exercises to predict the manner in which they did the exercise.
 
+
 ### Analysis
 Six young health participants were asked to perform one set of 10 repetitions of the Unilateral Dumbbell Biceps Curl in five different fashions: exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E). Class A corresponds to the specified execution of the exercise, while the other 4 classes correspond to common mistakes.    
 This analysis will build a machine learning model from the sample data to predict the manner in which the exercise was performed. This is a classification problem into discrete categories,  located in the 'classe' variable.  More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).     
